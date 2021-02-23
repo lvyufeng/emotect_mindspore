@@ -40,5 +40,5 @@ bert_net_cfg = BertConfig(
     initializer_range=0.02,
     use_relative_positions=False,
     dtype=mstype.float32,
-    compute_type=mstype.float32,
+    compute_type=mstype.float16,
 )

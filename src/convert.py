@@ -14,37 +14,37 @@ def build_params_map(attention_num=12):
     :return:
     """
     weight_map = collections.OrderedDict({
-        'word_embedding': "bert.bert_embedding_lookup.embedding_table",
-        'pos_embedding': "bert.bert_embedding_postprocessor.full_position_embedding.embedding_table",
-        'sent_embedding': "bert.bert_embedding_postprocessor.token_type_embedding.embedding_table",
-        'pre_encoder_layer_norm_scale': 'bert.bert_embedding_postprocessor.layernorm.gamma',
-        'pre_encoder_layer_norm_bias': 'bert.bert_embedding_postprocessor.layernorm.beta',
+        'word_embedding': "bert.bert.bert_embedding_lookup.embedding_table",
+        'pos_embedding': "bert.bert.bert_embedding_postprocessor.full_position_embedding.embedding_table",
+        'sent_embedding': "bert.bert.bert_embedding_postprocessor.token_type_embedding.embedding_table",
+        'pre_encoder_layer_norm_scale': 'bert.bert.bert_embedding_postprocessor.layernorm.gamma',
+        'pre_encoder_layer_norm_bias': 'bert.bert.bert_embedding_postprocessor.layernorm.beta',
     })
     # add attention layers
     for i in range(attention_num):
-        weight_map[f'encoder_layer_{i}_multi_head_att_query_fc.w_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.query_layer.weight'
-        weight_map[f'encoder_layer_{i}_multi_head_att_query_fc.b_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.query_layer.bias'
-        weight_map[f'encoder_layer_{i}_multi_head_att_key_fc.w_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.key_layer.weight'
-        weight_map[f'encoder_layer_{i}_multi_head_att_key_fc.b_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.key_layer.bias'
-        weight_map[f'encoder_layer_{i}_multi_head_att_value_fc.w_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.value_layer.weight'
-        weight_map[f'encoder_layer_{i}_multi_head_att_value_fc.b_0'] = f'bert.bert_encoder.layers.{i}.attention.attention.value_layer.bias'
-        weight_map[f'encoder_layer_{i}_multi_head_att_output_fc.w_0'] = f'bert.bert_encoder.layers.{i}.attention.output.dense.weight'
-        weight_map[f'encoder_layer_{i}_multi_head_att_output_fc.b_0'] = f'bert.bert_encoder.layers.{i}.attention.output.dense.bias'
-        weight_map[f'encoder_layer_{i}_post_att_layer_norm_scale'] = f'bert.bert_encoder.layers.{i}.attention.output.layernorm.gamma'
-        weight_map[f'encoder_layer_{i}_post_att_layer_norm_bias'] = f'bert.bert_encoder.layers.{i}.attention.output.layernorm.beta'
-        weight_map[f'encoder_layer_{i}_ffn_fc_0.w_0'] = f'bert.bert_encoder.layers.{i}.intermediate.weight'
-        weight_map[f'encoder_layer_{i}_ffn_fc_0.b_0'] = f'bert.bert_encoder.layers.{i}.intermediate.bias'
-        weight_map[f'encoder_layer_{i}_ffn_fc_1.w_0'] = f'bert.bert_encoder.layers.{i}.output.dense.weight'
-        weight_map[f'encoder_layer_{i}_ffn_fc_1.b_0'] = f'bert.bert_encoder.layers.{i}.output.dense.bias'
-        weight_map[f'encoder_layer_{i}_post_ffn_layer_norm_scale'] = f'bert.bert_encoder.layers.{i}.output.layernorm.gamma'
-        weight_map[f'encoder_layer_{i}_post_ffn_layer_norm_bias'] = f'bert.bert_encoder.layers.{i}.output.layernorm.beta'
+        weight_map[f'encoder_layer_{i}_multi_head_att_query_fc.w_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.query_layer.weight'
+        weight_map[f'encoder_layer_{i}_multi_head_att_query_fc.b_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.query_layer.bias'
+        weight_map[f'encoder_layer_{i}_multi_head_att_key_fc.w_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.key_layer.weight'
+        weight_map[f'encoder_layer_{i}_multi_head_att_key_fc.b_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.key_layer.bias'
+        weight_map[f'encoder_layer_{i}_multi_head_att_value_fc.w_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.value_layer.weight'
+        weight_map[f'encoder_layer_{i}_multi_head_att_value_fc.b_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.attention.value_layer.bias'
+        weight_map[f'encoder_layer_{i}_multi_head_att_output_fc.w_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.output.dense.weight'
+        weight_map[f'encoder_layer_{i}_multi_head_att_output_fc.b_0'] = f'bert.bert.bert_encoder.layers.{i}.attention.output.dense.bias'
+        weight_map[f'encoder_layer_{i}_post_att_layer_norm_scale'] = f'bert.bert.bert_encoder.layers.{i}.attention.output.layernorm.gamma'
+        weight_map[f'encoder_layer_{i}_post_att_layer_norm_bias'] = f'bert.bert.bert_encoder.layers.{i}.attention.output.layernorm.beta'
+        weight_map[f'encoder_layer_{i}_ffn_fc_0.w_0'] = f'bert.bert.bert_encoder.layers.{i}.intermediate.weight'
+        weight_map[f'encoder_layer_{i}_ffn_fc_0.b_0'] = f'bert.bert.bert_encoder.layers.{i}.intermediate.bias'
+        weight_map[f'encoder_layer_{i}_ffn_fc_1.w_0'] = f'bert.bert.bert_encoder.layers.{i}.output.dense.weight'
+        weight_map[f'encoder_layer_{i}_ffn_fc_1.b_0'] = f'bert.bert.bert_encoder.layers.{i}.output.dense.bias'
+        weight_map[f'encoder_layer_{i}_post_ffn_layer_norm_scale'] = f'bert.bert.bert_encoder.layers.{i}.output.layernorm.gamma'
+        weight_map[f'encoder_layer_{i}_post_ffn_layer_norm_bias'] = f'bert.bert.bert_encoder.layers.{i}.output.layernorm.beta'
     # add pooler
     weight_map.update(
         {
-            'pooled_fc.w_0': 'bert.dense.weight',
-            'pooled_fc.b_0': 'bert.dense.bias',
-            'cls_out_w': 'dense_1.weight',
-            'cls_out_b': 'dense_1.bias'
+            'pooled_fc.w_0': 'bert.bert.dense.weight',
+            'pooled_fc.b_0': 'bert.bert.dense.bias',
+            'cls_out_w': 'bert.dense_1.weight',
+            'cls_out_b': 'bert.dense_1.bias'
         }
     )
     return weight_map
@@ -64,7 +64,10 @@ def extract_and_convert(input_dir, output_dir):
         if weight_name not in weight_map.keys():
             continue
         #print(weight_name, weight_value.shape)
-        if 'w_0' in weight_name or 'post_att_layer_norm_scale' in weight_name or 'post_ffn_layer_norm_scale' in weight_name:
+        if 'w_0' in weight_name \
+            or 'post_att_layer_norm_scale' in weight_name \
+            or 'post_ffn_layer_norm_scale' in weight_name \
+            or 'cls_out_w' in weight_name:
             weight_value = weight_value.transpose()
         state_dict.append({'name':weight_map[weight_name],'data':Tensor(weight_value)})
         print(weight_name, '->', weight_map[weight_name], weight_value.shape)
