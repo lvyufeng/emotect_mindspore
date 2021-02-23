@@ -135,3 +135,6 @@ pretrain_models/
 
 # log file
 classifier_log.txt
+ms_log/
+
+analyze_fail.dat

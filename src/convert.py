@@ -77,5 +77,6 @@ def run_convert():
     parser.add_argument("--output_dir", type=str, default="", help="Converted model dir")
     args_opt = parser.parse_args()
     extract_and_convert(args_opt.input_dir, args_opt.output_dir)
+    
 if __name__ == '__main__':
     run_convert()

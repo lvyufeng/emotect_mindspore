@@ -846,7 +846,6 @@ class BertModel(nn.Cell):
     def construct(self, input_ids, token_type_ids, input_mask):
         """Bidirectional Encoder Representations from Transformers."""
         # embedding
-        embedding_tables = self.bert_embedding_lookup.embedding_table
         word_embeddings = self.bert_embedding_lookup(input_ids)
         embedding_output = self.bert_embedding_postprocessor(token_type_ids,
                                                              word_embeddings)
@@ -870,4 +869,4 @@ class BertModel(nn.Cell):
         pooled_output = self.dense(first_token)
         pooled_output = self.cast(pooled_output, self.dtype)
 
-        return sequence_output, pooled_output, embedding_tables
+        return sequence_output, pooled_output

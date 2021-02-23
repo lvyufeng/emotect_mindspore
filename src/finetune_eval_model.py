@@ -46,7 +46,7 @@ class BertCLSModel(nn.Cell):
         self.assessment_method = assessment_method
 
     def construct(self, input_ids, input_mask, token_type_id):
-        _, pooled_output, _ = \
+        _, pooled_output = \
             self.bert(input_ids, token_type_id, input_mask)
         cls = self.cast(pooled_output, self.dtype)
         cls = self.dropout(cls)

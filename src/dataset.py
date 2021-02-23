@@ -24,8 +24,7 @@ def create_classification_dataset(batch_size=1, repeat_count=1, assessment_metho
                                   data_file_path=None, schema_file_path=None, do_shuffle=True):
     """create finetune or evaluation dataset"""
     type_cast_op = C.TypeCast(mstype.int32)
-    data_set = ds.TFRecordDataset([data_file_path], schema_file_path if schema_file_path != "" else None,
-                                  columns_list=["input_ids", "input_mask", "segment_ids", "label_ids"],
+    data_set = ds.MindDataset([data_file_path], columns_list=["input_ids", "input_mask", "segment_ids", "label_ids"],
                                   shuffle=do_shuffle)
     if assessment_method == "Spearman_correlation":
         type_cast_op_float = C.TypeCast(mstype.float32)
@@ -37,5 +36,5 @@ def create_classification_dataset(batch_size=1, repeat_count=1, assessment_metho
     data_set = data_set.map(operations=type_cast_op, input_columns="input_ids")
     data_set = data_set.repeat(repeat_count)
     # apply batch operations
-    data_set = data_set.batch(batch_size, drop_remainder=True)
+    data_set = data_set.batch(batch_size, drop_remainder=False)
     return data_set

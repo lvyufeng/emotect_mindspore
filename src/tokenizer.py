@@ -1,3 +1,8 @@
+import io
+import six
+import collections
+import unicodedata
+
 class FullTokenizer(object):
     """Runs end-to-end tokenziation."""
 

@@ -22,18 +22,18 @@ echo "==========================================================================
 
 mkdir -p ms_log
 CUR_DIR=`pwd`
-PROJECT_DIR=$(cd "$(dirname "$0")" || exit; pwd)
-MODEL_PATH=${PROJECT_DIR}/pretrained_models
+MODEL_PATH=${CUR_DIR}/pretrain_models
+DATA_PATH=${CUR_DIR}/data
 export GLOG_log_dir=${CUR_DIR}/ms_log
 export GLOG_logtostderr=0
-python ${PROJECT_DIR}/../run_ernie_classifier.py  \
-    --device_target="Ascend" \
+python ${CUR_DIR}/run_ernie_classifier.py  \
+    --device_target="GPU" \
     --do_train="true" \
     --do_eval="true" \
     --assessment_method="Accuracy" \
     --device_id=0 \
     --epoch_num=3 \
-    --num_class=2 \
+    --num_class=3 \
     --train_data_shuffle="true" \
     --eval_data_shuffle="false" \
     --train_batch_size=32 \
@@ -41,6 +41,6 @@ python ${PROJECT_DIR}/../run_ernie_classifier.py  \
     --save_finetune_checkpoint_path="" \
     --load_pretrain_checkpoint_path="${MODEL_PATH}/converted/ernie.ckpt" \
     --load_finetune_checkpoint_path="" \
-    --train_data_file_path="" \
-    --eval_data_file_path="" \
+    --train_data_file_path="${DATA_PATH}/train.mindrecord" \
+    --eval_data_file_path="${DATA_PATH}/dev.mindrecord" \
     --schema_file_path="" #> classifier_log.txt 2>&1 &

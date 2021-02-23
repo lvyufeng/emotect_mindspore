@@ -1,3 +1,45 @@
+import os
+import io
+import six
+import argparse
+import numpy as np
+from collections import namedtuple
+from mindspore.mindrecord import FileWriter
+from mindspore.log import logging
+from tokenizer import FullTokenizer
+
+def csv_reader(fd, delimiter='\t'):
+    """
+    csv 文件读取
+    """
+    def gen():
+        for i in fd:
+            slots = i.rstrip('\n').split(delimiter)
+            if len(slots) == 1:
+                yield slots,
+            else:
+                yield slots
+    return gen()
+
+def convert_to_unicode(text):
+    """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
+    if six.PY3:
+        if isinstance(text, str):
+            return text
+        elif isinstance(text, bytes):
+            return text.decode("utf-8", "ignore")
+        else:
+            raise ValueError("Unsupported string type: %s" % (type(text)))
+    elif six.PY2:
+        if isinstance(text, str):
+            return text.decode("utf-8", "ignore")
+        elif isinstance(text, unicode):
+            return text
+        else:
+            raise ValueError("Unsupported string type: %s" % (type(text)))
+    else:
+        raise ValueError("Not running on Python2 or Python 3?")
+
 class BaseReader(object):
     """BaseReader for classify and sequence labeling task"""
 
@@ -97,24 +139,30 @@ class BaseReader(object):
         # used as as the "sentence vector". Note that this only makes sense because
         # the entire model is fine-tuned.
         tokens = []
-        text_type_ids = []
+        segment_ids = []
         tokens.append("[CLS]")
-        text_type_ids.append(0)
+        segment_ids.append(0)
         for token in tokens_a:
             tokens.append(token)
-            text_type_ids.append(0)
+            segment_ids.append(0)
         tokens.append("[SEP]")
-        text_type_ids.append(0)
+        segment_ids.append(0)
 
         if tokens_b:
             for token in tokens_b:
                 tokens.append(token)
-                text_type_ids.append(1)
+                segment_ids.append(1)
             tokens.append("[SEP]")
-            text_type_ids.append(1)
+            segment_ids.append(1)
 
-        token_ids = tokenizer.convert_tokens_to_ids(tokens)
-        position_ids = list(range(len(token_ids)))
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
+        
+        input_mask = [1] * len(input_ids)
+
+        while len(input_ids) < max_seq_length:
+            input_ids.append(0)
+            input_mask.append(0)
+            segment_ids.append(0)
 
         if self.label_map:
             label_id = self.label_map[example.label]
@@ -123,41 +171,14 @@ class BaseReader(object):
 
         Record = namedtuple(
             'Record',
-            ['token_ids', 'text_type_ids', 'position_ids', 'label_id', 'qid'])
-
-        qid = None
-        if "qid" in example._fields:
-            qid = example.qid
+            ['input_ids', 'input_mask', 'segment_ids', 'label_id'])
 
         record = Record(
-            token_ids=token_ids,
-            text_type_ids=text_type_ids,
-            position_ids=position_ids,
-            label_id=label_id,
-            qid=qid)
+            input_ids=input_ids,
+            input_mask=input_mask,
+            segment_ids=segment_ids,
+            label_id=label_id)
         return record
-
-    def _prepare_batch_data(self, examples, batch_size, phase=None):
-        """generate batch records"""
-        batch_records, max_len = [], 0
-        for index, example in enumerate(examples):
-            if phase == "train":
-                self.current_example = index
-            record = self._convert_example_to_record(example, self.max_seq_len,
-                                                     self.tokenizer)
-            max_len = max(max_len, len(record.token_ids))
-            if self.in_tokens:
-                to_append = (len(batch_records) + 1) * max_len <= batch_size
-            else:
-                to_append = len(batch_records) < batch_size
-            if to_append:
-                batch_records.append(record)
-            else:
-                yield self._pad_batch_records(batch_records)
-                batch_records, max_len = [record], len(record.token_ids)
-
-        if batch_records:
-            yield self._pad_batch_records(batch_records)
 
     def get_num_examples(self, input_file):
         """return total number of examples"""
@@ -168,28 +189,32 @@ class BaseReader(object):
         examples = self._read_tsv(input_file)
         return examples
 
-    def data_generator(self,
-                       input_file,
-                       batch_size,
-                       epoch,
-                       shuffle=True,
-                       phase=None):
-        """return generator which yields batch data for pyreader"""
+    def file_based_convert_examples_to_features(self, input_file, output_file):
+        """"Convert a set of `InputExample`s to a MindDataset file."""
         examples = self._read_tsv(input_file)
 
-        def _wrapper():
-            for epoch_index in range(epoch):
-                if phase == "train":
-                    self.current_example = 0
-                    self.current_epoch = epoch_index
-                if shuffle:
-                    np.random.shuffle(examples)
-
-                for batch_data in self._prepare_batch_data(
-                        examples, batch_size, phase=phase):
-                    yield batch_data
-
-        return _wrapper
+        writer = FileWriter(file_name=output_file, shard_num=1)
+        nlp_schema = {
+            "input_ids": {"type": "int64", "shape":[-1]},
+            "input_mask": {"type": "int64", "shape":[-1]},
+            "segment_ids": {"type": "int64", "shape":[-1]},
+            "label_ids": {"type": "int64", "shape":[-1]},
+        }
+        writer.add_schema(nlp_schema, "proprocessed classification dataset")
+        data = []
+        for index, example in enumerate(examples):
+            if index % 10000 == 0:
+                logging.info("Writing example %d of %d" % (index, len(examples)))
+            record = self._convert_example_to_record(example, self.max_seq_len, self.tokenizer)
+            sample = {
+                "input_ids": np.array(record.input_ids, dtype=np.int64),
+                "input_mask": np.array(record.input_mask, dtype=np.int64),
+                "segment_ids": np.array(record.segment_ids, dtype=np.int64),
+                "label_ids": np.array([record.label_id], dtype=np.int64),
+            }
+            data.append(sample)
+        writer.write_raw_data(data)
+        writer.commit()
 
 class ClassifyReader(BaseReader):
     """ClassifyReader"""
@@ -213,78 +238,26 @@ class ClassifyReader(BaseReader):
                 examples.append(example)
             return examples
 
-    def _pad_batch_records(self, batch_records):
-        batch_token_ids = [record.token_ids for record in batch_records]
-        batch_text_type_ids = [record.text_type_ids for record in batch_records]
-        batch_position_ids = [record.position_ids for record in batch_records]
-        batch_labels = [record.label_id for record in batch_records]
-        batch_labels = np.array(batch_labels).astype("int64").reshape([-1, 1])
+def main():
+    parser = argparse.ArgumentParser(description="read dataset and save it to minddata")
+    parser.add_argument("--vocab_path", type=str, default="", help="vocab file")
+    parser.add_argument("--label_map_config", type=str, default=None, help="label mapping config file")
+    parser.add_argument("--max_seq_len", type=int, default=128, help="The maximum total input sequence length after WordPiece tokenization. "
+    "Sequences longer than this will be truncated, and sequences shorter "
+    "than this will be padded.")
+    parser.add_argument("--do_lower_case", type=bool, default=True, help="Whether to lower case the input text. Should be True for uncased models and False for cased models.")
+    parser.add_argument("--random_seed", type=int, default=0, help="random seed number")
+    parser.add_argument("--input_file", type=str, default="", help="raw data file")
+    parser.add_argument("--output_file", type=str, default="", help="minddata file")
+    args_opt = parser.parse_args()
+    reader = ClassifyReader(
+        vocab_path=args_opt.vocab_path,
+        label_map_config=args_opt.label_map_config,
+        max_seq_len=args_opt.max_seq_len,
+        do_lower_case=args_opt.do_lower_case,
+        random_seed=args_opt.random_seed
+    )
+    reader.file_based_convert_examples_to_features(input_file=args_opt.input_file, output_file=args_opt.output_file)
 
-        # padding
-        padded_token_ids, input_mask, seq_lens = pad_batch_data(
-            batch_token_ids,
-            pad_idx=self.pad_id,
-            return_input_mask=True,
-            return_seq_lens=True)
-        padded_text_type_ids = pad_batch_data(
-            batch_text_type_ids, pad_idx=self.pad_id)
-        padded_position_ids = pad_batch_data(
-            batch_position_ids, pad_idx=self.pad_id)
-
-        return_list = [
-            padded_token_ids, padded_text_type_ids, padded_position_ids,
-            input_mask, batch_labels, seq_lens
-        ]
-
-        return return_list
-
-def pad_batch_data(insts,
-                   pad_idx=0,
-                   return_pos=False,
-                   return_input_mask=False,
-                   return_max_len=False,
-                   return_num_token=False,
-                   return_seq_lens=False):
-    """
-    Pad the instances to the max sequence length in batch, and generate the
-    corresponding position data and input mask.
-    """
-    return_list = []
-    max_len = max(len(inst) for inst in insts)
-    # Any token included in dict can be used to pad, since the paddings' loss
-    # will be masked out by weights and make no effect on parameter gradients.
-
-    inst_data = np.array(
-        [inst + list([pad_idx] * (max_len - len(inst))) for inst in insts])
-    return_list += [inst_data.astype("int64").reshape([-1, max_len, 1])]
-
-    # position data
-    if return_pos:
-        inst_pos = np.array([
-            list(range(0, len(inst))) + [pad_idx] * (max_len - len(inst))
-            for inst in insts
-        ])
-
-        return_list += [inst_pos.astype("int64").reshape([-1, max_len, 1])]
-
-    if return_input_mask:
-        # This is used to avoid attention on paddings.
-        input_mask_data = np.array([[1] * len(inst) + [0] *
-                                    (max_len - len(inst)) for inst in insts])
-        input_mask_data = np.expand_dims(input_mask_data, axis=-1)
-        return_list += [input_mask_data.astype("float32")]
-
-    if return_max_len:
-        return_list += [max_len]
-
-    if return_num_token:
-        num_token = 0
-        for inst in insts:
-            num_token += len(inst)
-        return_list += [num_token]
-
-    if return_seq_lens:
-        seq_lens = np.array([len(inst) for inst in insts])
-        return_list += [seq_lens.astype("int64").reshape([-1, 1])]
-
-    return return_list if len(return_list) > 1 else return_list[0]
+if __name__ == "__main__":
+    main()
