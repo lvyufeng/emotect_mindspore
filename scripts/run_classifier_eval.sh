@@ -24,11 +24,12 @@ mkdir -p ms_log
 CUR_DIR=`pwd`
 MODEL_PATH=${CUR_DIR}/pretrain_models
 DATA_PATH=${CUR_DIR}/data
+SAVE_PATH=${CUR_DIR}/save_models
 export GLOG_log_dir=${CUR_DIR}/ms_log
 export GLOG_logtostderr=0
 python ${CUR_DIR}/run_ernie_classifier.py  \
-    --device_target="GPU" \
-    --do_train="true" \
+    --device_target="GPU" \ # Ascend if using 910
+    --do_train="false" \
     --do_eval="true" \
     --assessment_method="Accuracy" \
     --device_id=0 \
@@ -39,8 +40,8 @@ python ${CUR_DIR}/run_ernie_classifier.py  \
     --train_batch_size=32 \
     --eval_batch_size=1 \
     --save_finetune_checkpoint_path="" \
-    --load_pretrain_checkpoint_path="${MODEL_PATH}/converted/ernie.ckpt" \
-    --load_finetune_checkpoint_path="" \
+    --load_pretrain_checkpoint_path="" \
+    --load_finetune_checkpoint_path="${MODEL_PATH}/converted/ernie.ckpt" \
     --train_data_file_path="${DATA_PATH}/train.mindrecord" \
     --eval_data_file_path="${DATA_PATH}/dev.mindrecord" \
     --schema_file_path="" #> classifier_log.txt 2>&1 &
